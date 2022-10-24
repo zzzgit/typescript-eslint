@@ -146,6 +146,7 @@ function getProgramsForProjects(
   extra: Extra,
 ): ts.Program[] {
   const filePath = getCanonicalFileName(filePathIn);
+  log('Getting program(s) for %s.', filePath);
   const results = [];
 
   // preserve reference to code and file being linted
@@ -169,10 +170,13 @@ function getProgramsForProjects(
    * before we go into the process of attempting to find and update every program
    * see if we know of a program that contains this file
    */
+  log('Checking %d known watch programs.', knownWatchProgramMap.size);
   for (const [tsconfigPath, existingWatch] of knownWatchProgramMap.entries()) {
     let fileList = programFileListCache.get(tsconfigPath);
     let updatedProgram: ts.Program | null = null;
     if (!fileList) {
+      log('Updating proram and getting filelist for %s.', tsconfigPath);
+
       updatedProgram = existingWatch.getProgram().getProgram();
       fileList = updateCachedFileList(tsconfigPath, updatedProgram, extra);
     }
@@ -187,6 +191,8 @@ function getProgramsForProjects(
 
       return [updatedProgram];
     }
+
+    log('Did not find %s in program %s.', filePath, tsconfigPath);
   }
   log(
     'File did not belong to any existing programs, moving to create/update. %s',
@@ -202,6 +208,7 @@ function getProgramsForProjects(
     const existingWatch = knownWatchProgramMap.get(tsconfigPath);
 
     if (existingWatch) {
+      log('Updating program for %s.', tsconfigPath);
       const updatedProgram = maybeInvalidateProgram(
         existingWatch,
         filePath,
@@ -229,6 +236,8 @@ function getProgramsForProjects(
       results.push(updatedProgram);
       continue;
     }
+
+    log('Creating new program for %s.', tsconfigPath);
 
     const programWatch = createWatchProgram(tsconfigPath, extra);
     knownWatchProgramMap.set(tsconfigPath, programWatch);
@@ -272,6 +281,7 @@ function createWatchProgram(
   ) as WatchCompilerHostOfConfigFile<ts.BuilderProgram>;
 
   if (extra.moduleResolver) {
+    log('Applying custom module resolver');
     watchCompilerHost.resolveModuleNames = getModuleResolver(
       extra.moduleResolver,
     ).resolveModuleNames;
@@ -365,6 +375,7 @@ function createWatchProgram(
   // So any changes in the program will be delayed and updated when getProgram is called on watch
   let callback: (() => void) | undefined;
   if (isRunningNoTimeoutFix) {
+    log('Running with timeout fix');
     watchCompilerHost.setTimeout = undefined;
     watchCompilerHost.clearTimeout = undefined;
   } else {
