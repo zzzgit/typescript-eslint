@@ -85,6 +85,7 @@ type Cases = {
 export function createTestCases(cases: Cases): void {
   const ruleTester = new RuleTester({
     parser: '@typescript-eslint/parser',
+    snapshots: false,
   });
 
   ruleTester.run('naming-convention', rule, {
